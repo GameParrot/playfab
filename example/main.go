@@ -2,11 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"time"
+
 	"github.com/justtaldevelops/playfab"
 	"github.com/sandertv/gophertunnel/minecraft/auth"
 	"golang.org/x/oauth2"
-	"net/http"
-	"os"
 )
 
 func main() {
@@ -16,7 +19,21 @@ func main() {
 		panic(err)
 	}
 
-	resp, err := db.Search(playfab.Filter{
+	t := time.Now()
+	accounts, err := db.SearchAccounts("2535447073711921")
+	delta := float64(time.Since(t).Microseconds()) / 1000
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Took %fms\n", delta)
+
+	for xuid, dat := range accounts {
+		fmt.Printf("%s: %s [%s]\n", xuid, dat.PlayFabId, dat.TitlePlayerId)
+	}
+
+	db.ListFunctions()
+
+	/* resp, err := db.Search(playfab.Filter{
 		Count:   true,
 		Filter:  "(contentType eq 'PersonaDurable' and displayProperties/pieceType eq 'persona_emote')",
 		OrderBy: "creationDate desc",
@@ -31,7 +48,7 @@ func main() {
 		panic(err)
 	}
 
-	os.WriteFile("test.json", b, 0644)
+	os.WriteFile("test.json", b, 0644) */
 }
 
 func tokenSource() oauth2.TokenSource {

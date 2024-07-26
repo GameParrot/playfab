@@ -3,9 +3,10 @@ package playfab
 import (
 	"context"
 	"fmt"
-	"github.com/sandertv/gophertunnel/minecraft/auth"
 	"strings"
 	"time"
+
+	"github.com/sandertv/gophertunnel/minecraft/auth"
 )
 
 const (
@@ -156,7 +157,7 @@ func (p *PlayFab) acquireLoginToken() error {
 		},
 		TitleID:   strings.ToUpper(minecraftTitleID),
 		XboxToken: fmt.Sprintf("XBL3.0 x=%v;%v", t.AuthorizationToken.DisplayClaims.UserInfo[0].UserHash, t.AuthorizationToken.Token),
-	}, &resp); err != nil {
+	}, &resp, false); err != nil {
 		return err
 	}
 
@@ -167,15 +168,40 @@ func (p *PlayFab) acquireLoginToken() error {
 
 // acquireEntityToken acquires the entity token that will be used for the rest of the session, and updates the PlayFab
 // instance with the new token.
-func (p *PlayFab) acquireEntityToken() error {
+func (p *PlayFab) acquireEntityToken(id, typ string) error {
 	var resp entityTokenResponse
 	if err := p.request(fmt.Sprintf("Authentication/GetEntityToken?sdk=%s", minecraftDefaultSDK), entityTokenRequest{Entity: entityData{
-		ID:   p.id,
-		Type: "master_player_account",
-	}}, &resp); err != nil {
+		ID:   id,
+		Type: typ,
+		//Type: "master_player_account",
+	}}, &resp, false); err != nil {
 		return err
 	}
 
-	p.token = resp.Data.EntityToken
+	switch typ {
+	case "master_player_account":
+		p.token = resp.Data.EntityToken
+	case "title_player_account":
+		p.titleToken = resp.Data.EntityToken
+	default:
+		panic("unknown entity type: " + typ)
+	}
 	return nil
+}
+
+func (p *PlayFab) aquireTitleAccount() error {
+	m := make(map[string]any)
+	filter := struct {
+		MasterPlayerAccountIds []string `json:"MasterPlayerAccountIds"`
+		TitleId                string   `json:"TitleId"`
+	}{
+		MasterPlayerAccountIds: []string{p.id},
+		TitleId:                "20CA2",
+	}
+	if err := p.request("Profile/GetTitlePlayersFromMasterPlayerAccountIds", filter, &m, false); err != nil {
+		return err
+	}
+
+	p.titleAccountId = m["data"].(map[string]any)["TitlePlayerAccounts"].(map[string]any)[p.id].(map[string]any)["Id"].(string)
+	return p.acquireEntityToken(p.titleAccountId, "title_player_account")
 }
