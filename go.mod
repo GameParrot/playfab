@@ -1,4 +1,4 @@
-module github.com/justtaldevelops/playfab
+module github.com/gameparrot/playfab
 
 go 1.22.0
 
