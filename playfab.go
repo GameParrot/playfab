@@ -40,6 +40,11 @@ func New(client *http.Client, src oauth2.TokenSource) (*PlayFab, error) {
 	return p, nil
 }
 
+// ID returns the PlayFab ID
+func (p *PlayFab) ID() string {
+	return p.id
+}
+
 // request sends a request to the PlayFab API.
 func (p *PlayFab) request(url string, body any, res any, title bool) error {
 	b, err := json.Marshal(body)
