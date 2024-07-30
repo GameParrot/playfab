@@ -3,7 +3,6 @@ package playfab
 import (
 	"encoding/json"
 	"fmt"
-	"errors"
 )
 
 // Filter represents a filter for the PlayFab catalog search system.
