@@ -3,6 +3,7 @@ package playfab
 import (
 	"encoding/json"
 	"fmt"
+	"errors"
 )
 
 // Filter represents a filter for the PlayFab catalog search system.
@@ -44,14 +45,13 @@ func (p *PlayFab) SearchAccounts(xuids ...string) (map[string]AccountData, error
 		TitleId:     "20CA2",
 	}
 	if err := p.request("Profile/GetTitlePlayersFromXboxLiveIDs", data, &m, false); err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	accounts := make(map[string]AccountData)
 	for k, v := range m["data"].(map[string]any)["TitlePlayerAccounts"].(map[string]any) {
 		if v == nil {
 			// There's no account data for this XUID.
-			fmt.Printf("NO DATA FOR %s\n", k)
 			continue
 		}
 
@@ -68,15 +68,16 @@ func (p *PlayFab) SearchAccounts(xuids ...string) (map[string]AccountData, error
 }
 
 // ListFunctions prints out all the cloud functions on the PlayFab API.
-func (p *PlayFab) ListFunctions() {
+func (p *PlayFab) ListFunctions() error {
 	// POST https://titleId.playfabapi.com/CloudScript/ListFunctions
 	m := make(map[string]any)
 	if err := p.request("CloudScript/ListHttpFunctions", nil, &m, true); err != nil {
-		panic(err)
+		return err
 	}
 
 	enc, _ := json.MarshalIndent(m, "", "  ")
 	fmt.Println(string(enc))
+	return nil
 }
 
 // TODO: Implement more endpoints.
