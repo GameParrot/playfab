@@ -12,6 +12,8 @@ import (
 const (
 	// minecraftTitleID represents the PlayFab title ID for Minecraft: Bedrock Edition.
 	minecraftTitleID = "20ca2"
+	// minecraftEduTitleID represents the PlayFab title ID for Minecraft: Education Edition.
+	minecraftEduTitleID = "6955f"
 	// minecraftDefaultSDK represents the usual SDK sent by the Minecraft client.
 	minecraftDefaultSDK = "XPlatCppSdk-3.6.190304"
 	// minecraftUserAgent represents the usual user agent sent by the Minecraft client.
@@ -40,6 +42,7 @@ type infoRequestParameters struct {
 
 // loginRequest is a request sent by the client to the PlayFab API to obtain a temporary login token.
 type loginRequest struct {
+	CustomID              string                `json:"CustomId,omitempty"`
 	CreateAccount         bool                  `json:"CreateAccount"`
 	EncryptedRequest      any                   `json:"EncryptedRequest"`
 	InfoRequestParameters infoRequestParameters `json:"InfoRequestParameters"`
@@ -166,6 +169,26 @@ func (p *PlayFab) acquireLoginToken() error {
 	return nil
 }
 
+func (p *PlayFab) loginWithCustomId() error {
+	var resp loginResponse
+	if err := p.request(fmt.Sprintf("Client/LoginWithCustomID?sdk=%s", minecraftDefaultSDK), loginRequest{
+		CreateAccount: true,
+		InfoRequestParameters: infoRequestParameters{
+			PlayerProfile:   true,
+			UserAccountInfo: true,
+		},
+		TitleID:  strings.ToUpper(minecraftEduTitleID),
+		CustomID: p.customId,
+	}, &resp, false); err != nil {
+		return err
+	}
+
+	p.id = resp.Data.PlayFabID
+	p.token = resp.Data.EntityToken.EntityToken
+	return nil
+
+}
+
 // acquireEntityToken acquires the entity token that will be used for the rest of the session, and updates the PlayFab
 // instance with the new token.
 func (p *PlayFab) acquireEntityToken(id, typ string) error {
@@ -189,14 +212,14 @@ func (p *PlayFab) acquireEntityToken(id, typ string) error {
 	return nil
 }
 
-func (p *PlayFab) aquireTitleAccount() error {
+func (p *PlayFab) aquireTitleAccount(titleId string) error {
 	m := make(map[string]any)
 	filter := struct {
 		MasterPlayerAccountIds []string `json:"MasterPlayerAccountIds"`
 		TitleId                string   `json:"TitleId"`
 	}{
 		MasterPlayerAccountIds: []string{p.id},
-		TitleId:                "20CA2",
+		TitleId:                strings.ToUpper(titleId),
 	}
 	if err := p.request("Profile/GetTitlePlayersFromMasterPlayerAccountIds", filter, &m, false); err != nil {
 		return err

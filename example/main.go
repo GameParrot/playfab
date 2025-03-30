@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/justtaldevelops/playfab"
+	"github.com/gameparrot/playfab"
 	"github.com/sandertv/gophertunnel/minecraft/auth"
 	"golang.org/x/oauth2"
 )

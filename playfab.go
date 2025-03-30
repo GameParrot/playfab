@@ -17,6 +17,7 @@ const (
 // PlayFab represents an instance of a Minecraft PlayFab client.
 type PlayFab struct {
 	src                        oauth2.TokenSource
+	customId                   string
 	client                     *http.Client
 	id, token                  string
 	titleAccountId, titleToken string
@@ -34,7 +35,25 @@ func New(client *http.Client, src oauth2.TokenSource) (*PlayFab, error) {
 	if err := p.acquireEntityToken(p.id, "master_player_account"); err != nil {
 		return nil, err
 	}
-	if err := p.aquireTitleAccount(); err != nil {
+	if err := p.aquireTitleAccount(minecraftTitleID); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+// New creates a new PlayFab client with the given custom ID.
+func NewWithCustomID(client *http.Client, customId string) (*PlayFab, error) {
+	p := &PlayFab{
+		customId: customId,
+		client:   client,
+	}
+	if err := p.loginWithCustomId(); err != nil {
+		return nil, err
+	}
+	if err := p.acquireEntityToken(p.id, "master_player_account"); err != nil {
+		return nil, err
+	}
+	if err := p.aquireTitleAccount(minecraftEduTitleID); err != nil {
 		return nil, err
 	}
 	return p, nil
