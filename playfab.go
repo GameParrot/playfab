@@ -16,8 +16,6 @@ const (
 
 // PlayFab represents an instance of a Minecraft PlayFab client.
 type PlayFab struct {
-	src                        oauth2.TokenSource
-	customId                   string
 	client                     *http.Client
 	id, token                  string
 	titleAccountId, titleToken string
@@ -25,11 +23,19 @@ type PlayFab struct {
 
 // New creates a new PlayFab client with the given token source.
 func New(client *http.Client, src oauth2.TokenSource) (*PlayFab, error) {
+	token, err := acquireLoginToken(src)
+	if err != nil {
+		return nil, err
+	}
+	return NewWithXboxToken(client, token)
+}
+
+// New creates a new PlayFab client with the given xbox token.
+func NewWithXboxToken(client *http.Client, token string) (*PlayFab, error) {
 	p := &PlayFab{
-		src:    src,
 		client: client,
 	}
-	if err := p.acquireLoginToken(); err != nil {
+	if err := p.loginWithXbox(token); err != nil {
 		return nil, err
 	}
 	if err := p.acquireEntityToken(p.id, "master_player_account"); err != nil {
@@ -44,10 +50,9 @@ func New(client *http.Client, src oauth2.TokenSource) (*PlayFab, error) {
 // New creates a new PlayFab client with the given custom ID.
 func NewWithCustomID(client *http.Client, customId string) (*PlayFab, error) {
 	p := &PlayFab{
-		customId: customId,
-		client:   client,
+		client: client,
 	}
-	if err := p.loginWithCustomId(); err != nil {
+	if err := p.loginWithCustomId(customId); err != nil {
 		return nil, err
 	}
 	if err := p.acquireEntityToken(p.id, "master_player_account"); err != nil {

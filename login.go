@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/sandertv/gophertunnel/minecraft/auth"
+	"golang.org/x/oauth2"
 )
 
 const (
@@ -139,27 +140,32 @@ type entityTokenResponse struct {
 	} `json:"data"`
 }
 
-// acquireLoginToken acquires the temporary login token that will be used to acquire the entity token, using the Xbox
-// Live token.
-func (p *PlayFab) acquireLoginToken() error {
-	token, err := p.src.Token()
+// acquireLoginToken acquires the xbox token for playfab.
+func acquireLoginToken(src oauth2.TokenSource) (string, error) {
+	token, err := src.Token()
 	if err != nil {
-		return err
+		return "", err
 	}
 	t, err := auth.RequestXBLToken(context.Background(), token, "rp://playfabapi.com/")
 	if err != nil {
-		return err
+		return "", err
 	}
 
+	return fmt.Sprintf("XBL3.0 x=%v;%v", t.AuthorizationToken.DisplayClaims.UserInfo[0].UserHash, t.AuthorizationToken.Token), nil
+}
+
+// loginWithXbox acquires the temporary login token that will be used to acquire the entity token, using the Xbox
+// Live token.
+func (p *PlayFab) loginWithXbox(xboxToken string) error {
 	var resp loginResponse
-	if err = p.request(fmt.Sprintf("Client/LoginWithXbox?sdk=%s", minecraftDefaultSDK), loginRequest{
+	if err := p.request(fmt.Sprintf("Client/LoginWithXbox?sdk=%s", minecraftDefaultSDK), loginRequest{
 		CreateAccount: true,
 		InfoRequestParameters: infoRequestParameters{
 			PlayerProfile:   true,
 			UserAccountInfo: true,
 		},
 		TitleID:   strings.ToUpper(minecraftTitleID),
-		XboxToken: fmt.Sprintf("XBL3.0 x=%v;%v", t.AuthorizationToken.DisplayClaims.UserInfo[0].UserHash, t.AuthorizationToken.Token),
+		XboxToken: xboxToken,
 	}, &resp, false); err != nil {
 		return err
 	}
@@ -169,7 +175,8 @@ func (p *PlayFab) acquireLoginToken() error {
 	return nil
 }
 
-func (p *PlayFab) loginWithCustomId() error {
+// loginWithCustomId acquires the temporary login token that will be used to acquire the entity token, using the custom id.
+func (p *PlayFab) loginWithCustomId(customId string) error {
 	var resp loginResponse
 	if err := p.request(fmt.Sprintf("Client/LoginWithCustomID?sdk=%s", minecraftDefaultSDK), loginRequest{
 		CreateAccount: true,
@@ -178,7 +185,7 @@ func (p *PlayFab) loginWithCustomId() error {
 			UserAccountInfo: true,
 		},
 		TitleID:  strings.ToUpper(minecraftEduTitleID),
-		CustomID: p.customId,
+		CustomID: customId,
 	}, &resp, false); err != nil {
 		return err
 	}
